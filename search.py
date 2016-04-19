@@ -1,8 +1,10 @@
+import os
 from urllib import urlencode
 
 import requests
 
 from downloader import Downloader, DownloadPool
+from validator import ImgValidator
 from parser import LinkParser, ImgParser
 import settings
 
@@ -22,10 +24,26 @@ class GoogleSearch(object):
 
     def __init__(self, term):
         self.term = term
+        self.image_urls = []
 
-    def download(self, urls):
-        for page in DownloadPool(urls).items():
-            DownloadPool(ImgParser(page).parse()).download()
+    def parse_image_urls(self, page_urls):
+        for page in DownloadPool(page_urls).items():
+            self.image_urls.extend(ImgParser(page).parse())
+
+    def download(self):
+        DownloadPool(self.image_urls).download()
+
+    def clean(self):
+        for url in self.image_urls:
+            downloader = Downloader(url)
+            downloader.download()
+
+            with ImgValidator(downloader.path) as validator:
+                if not validator.is_valid():
+                    os.remove(downloader.path)
+                    continue
+
+                os.rename(downloader.path, '%s.%s' % (downloader.path, validator.extension))
 
     def search(self):
         for start in range(0, self.STEP * self.PAGES, self.STEP):
@@ -35,4 +53,7 @@ class GoogleSearch(object):
                 'start': start,
             }))
             page = Downloader(url).download()
-            self.download(LinkParser(page).parse())
+            self.parse_image_urls(LinkParser(page).parse())
+
+        self.download()
+        self.clean()
