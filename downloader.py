@@ -1,3 +1,4 @@
+from functools import partial
 import hashlib
 from multiprocessing import Pool
 import os
@@ -16,6 +17,9 @@ class Downloader(object):
     def __init__(self, url, storage_root=settings.STORAGE_ROOT):
         self.url = url
         self.path = os.path.join(storage_root, hashlib.md5(self.url).hexdigest())
+
+        if not os.path.exists(storage_root):
+            os.makedirs(storage_root)
 
     def load(self):
         with open(self.path, 'r') as file_handler:
@@ -42,21 +46,22 @@ class Downloader(object):
         return self.save(response.content)
 
 
-def download(url):
-    Downloader(url).download()
+def download(url, storage_root=settings.STORAGE_ROOT):
+    Downloader(url, storage_root).download()
 
 
 class DownloadPool(object):
 
-    def __init__(self, urls, pool_size=settings.THREADS):
+    def __init__(self, urls, storage_root=settings.STORAGE_ROOT, pool_size=settings.THREADS):
         self.urls = urls
+        self.storage_root = storage_root
         self.pool = Pool(pool_size)
 
         self.download()
 
     def items(self):
         for url in self.urls:
-            yield Downloader(url).download()
+            yield Downloader(url, self.storage_root).download()
 
     def download(self):
-        self.pool.map(download, self.urls)
+        self.pool.map(partial(download, storage_root=self.storage_root), self.urls)

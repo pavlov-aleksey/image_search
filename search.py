@@ -1,3 +1,4 @@
+import hashlib
 import os
 from urllib import urlencode
 
@@ -24,26 +25,28 @@ class GoogleSearch(object):
 
     def __init__(self, term):
         self.term = term
+        self.path = os.path.join(settings.STORAGE_ROOT, hashlib.md5(self.term).hexdigest())
         self.image_urls = []
 
     def parse_image_urls(self, page_urls):
-        for page in DownloadPool(page_urls).items():
+        for page in DownloadPool(page_urls, self.path).items():
             self.image_urls.extend(ImgParser(page).parse())
 
     def download(self):
-        DownloadPool(self.image_urls).download()
+        DownloadPool(self.image_urls, self.path).download()
 
     def clean(self):
-        for url in self.image_urls:
-            downloader = Downloader(url)
-            downloader.download()
+        for filename in os.listdir(self.path):
+            if not os.path.isfile(os.path.join(self.path, filename)):
+                continue
 
-            with ImgValidator(downloader.path) as validator:
+            filepath = os.path.join(self.path, filename)
+            with ImgValidator(filepath) as validator:
                 if not validator.is_valid():
-                    os.remove(downloader.path)
+                    os.remove(filepath)
                     continue
 
-                os.rename(downloader.path, '%s.%s' % (downloader.path, validator.extension))
+                os.rename(filepath, '%s.%s' % (filepath, validator.extension))
 
     def search(self):
         for start in range(0, self.STEP * self.PAGES, self.STEP):
@@ -52,7 +55,7 @@ class GoogleSearch(object):
                 'num': self.STEP,
                 'start': start,
             }))
-            page = Downloader(url).download()
+            page = Downloader(url, self.path).download()
             self.parse_image_urls(LinkParser(page).parse())
 
         self.download()
