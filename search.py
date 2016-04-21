@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 from urllib import urlencode
 
@@ -23,8 +24,14 @@ class GoogleSearch(object):
 
     def __init__(self, term):
         self.term = term
-        self.path = os.path.join(settings.STORAGE_ROOT, hashlib.md5(self.term).hexdigest())
+        self.job_id = hashlib.md5(self.term).hexdigest()
+        self.path = os.path.join(settings.STORAGE_ROOT, self.job_id)
         self.image_urls = []
+
+        self.log('Job started')
+
+    def log(self, message):
+        logging.info('Job #%s: %s' % (self.job_id, message))
 
     def parse_image_urls(self, page_urls):
         for page in DownloadPool(page_urls, self.path).items():
@@ -32,8 +39,10 @@ class GoogleSearch(object):
 
     def download(self):
         DownloadPool(self.image_urls, self.path).download()
+        self.log('Downloaded %d images' % len(self.image_urls))
 
     def clean(self):
+        successful = 0
         for filename in os.listdir(self.path):
             if not os.path.isfile(os.path.join(self.path, filename)):
                 continue
@@ -44,7 +53,10 @@ class GoogleSearch(object):
                     os.remove(filepath)
                     continue
 
+                successful += 1
                 os.rename(filepath, '%s.%s' % (filepath, validator.extension))
+
+        self.log('Selected %d good images' % successful)
 
     def search(self):
         for start in range(0, settings.STEP * settings.PAGES, settings.STEP):
@@ -55,6 +67,8 @@ class GoogleSearch(object):
             }))
             page = Downloader(url, self.path).download()
             self.parse_image_urls(LinkParser(page).parse())
+
+        self.log('Parsed %d image urls' % len(self.image_urls))
 
         self.download()
         self.clean()
