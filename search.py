@@ -11,8 +11,6 @@ import settings
 
 
 class GoogleSearch(object):
-    PAGES = 2
-    STEP = 10
     URL = 'http://www.google.com/search'
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
@@ -49,10 +47,10 @@ class GoogleSearch(object):
                 os.rename(filepath, '%s.%s' % (filepath, validator.extension))
 
     def search(self):
-        for start in range(0, self.STEP * self.PAGES, self.STEP):
+        for start in range(0, settings.STEP * settings.PAGES, settings.STEP):
             url = '%s?%s' % (self.URL, urlencode({
                 'q': self.term,
-                'num': self.STEP,
+                'num': settings.STEP,
                 'start': start,
             }))
             page = Downloader(url, self.path).download()

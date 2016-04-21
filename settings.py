@@ -16,3 +16,6 @@ ALLOWED_FORMATS = (
     'png',
     'bmp',
 )
+
+PAGES = 2  # Number of search pages to parse
+STEP = 10  # Number of results on a search page
