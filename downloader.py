@@ -47,7 +47,10 @@ class Downloader(object):
 
 
 def download(url, storage_root=settings.STORAGE_ROOT):
-    Downloader(url, storage_root).download()
+    try:
+        Downloader(url, storage_root).download()
+    except UnicodeEncodeError:
+        pass
 
 
 class DownloadPool(object):
